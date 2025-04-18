@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スポット選択マップ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 600px;
+      width: 100%;
+    }
+    #spot-list {
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .spot-item {
+      margin-bottom: 6px;
+    }
+    .spot-item a {
+      text-decoration: none;
+      color: #0077cc;
+    }  </style>
+</head>
+<body>
+  <h2>スポットを囲んでリスト化</h2>
+  <div id="map"></div>
+  <div id="spot-list">
+    <h3>選択されたスポット</h3>
+    <div id="list"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+
+  <script>
+    const map = L.map('map').setView([35.681, 139.767], 13); // 東京駅周辺
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const spotData = [
+      {
+        id: 'spot1',
+        name: 'スポットA',
+        lat: 35.681, lon: 139.767,
+        url: 'https://example.com/spot1'
+      },
+      {
+        id: 'spot2',
+        name: 'スポットB',
+        lat: 35.684, lon: 139.765,
+        url: 'https://example.com/spot2'
+      },
+      {
+        id: 'spot3',
+        name: 'スポットC',
+        lat: 35.683, lon: 139.771,
+        url: 'https://example.com/spot3'
+      }
+    ];
+
+    const markers = spotData.map(spot => {
+      const marker = L.marker([spot.lat, spot.lon]).addTo(map);
+      marker.bindPopup(`<b>${spot.name}</b>`);
+      marker.spotInfo = spot;
+      return marker;
+    });
+
+    let polygon;
+    let points = [];
+
+    map.on('click', e => {
+      points.push([e.latlng.lng, e.latlng.lat]);
+      if (polygon) map.removeLayer(polygon);
+      if (points.length >= 3) {
+        polygon = L.polygon(points.map(p => [p[1], p[0]])).addTo(map);
+      }
+      updateList();
+    });
+
+    function updateList() {
+      const listDiv = document.getElementById('list');
+      listDiv.innerHTML = '';
+
+      if (points.length < 3) return;
+
+      const poly = turf.polygon([[...points, points[0]]]);
+      const selected = spotData.filter(spot => {
+        return turf.booleanPointInPolygon(turf.point([spot.lon, spot.lat]), poly);
+      });
+
+      selected.forEach(spot => {
+        const el = document.createElement('div');
+        el.className = 'spot-item';
+        el.innerHTML = `<a href="${spot.url}" target="_blank">${spot.name}</a>`;
+        listDiv.appendChild(el);
+      });
+    }
+  </script>
+</body>
+</html>
